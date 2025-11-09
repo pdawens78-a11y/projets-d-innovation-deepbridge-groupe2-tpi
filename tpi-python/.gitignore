@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.dcm
+train.py
+train2.py
+notes*
+*.pkl
+*.onnx
+identify_dicom.py
+notes

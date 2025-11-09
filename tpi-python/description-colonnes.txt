@@ -1,0 +1,33 @@
+Description des colonnes et transformations appliquées
+Numéro :
+Identifiant unique du patient ou de l’intervention.
+Transformation : conservé tel quel, format chaîne ou entier.
+
+Age calcul / Age arrondi :
+Âge du patient calculé précisément et arrondi en années.
+Transformation : converti en nombre décimal (float) ou entier, valeurs invalides remplacées par None.
+
+femme/homme:
+Sexe du patient, codé en 0 ou 1 (exemple : 0 = femme, 1 = homme).
+Transformation : converti en booléen (0 ou 1).
+
+S+:
+Variable clinique ou opératoire (à préciser selon contexte).
+Transformation : converti en entier (int), valeurs invalides remplacées par None.
+
+patch = 1, eversion = 2:
+Type de technique chirurgicale utilisée (1 = patch, 2 = éversion).
+Transformation : converti en entier (int).
+
+shunt:
+Indique si un shunt a été utilisé durant l’opération (0 = non, 1 = oui).
+Transformation : converti en entier (int).
+
+Arterio, re inter, Anomalie, Anomalie comm:
+Variables cliniques indiquant présence d’anomalies pre-operatoires ou autres caractéristiques (nature spécifique à définir).
+Transformation : converti en entier (int).
+
+cplction N (stroke + periph), AIT/AVC, cplction C, cplication J30, Hématomes
+Variables indicatrices de complications post-opératoires spécifiques (ex : AVC, hématomes).
+Transformation : converties en booléen (0 ou 1).
+Compilation : si une au moins de ces colonnes vaut 1 pour un patient, alors la nouvelle variable cible complication est définie à 1, sinon 0.
