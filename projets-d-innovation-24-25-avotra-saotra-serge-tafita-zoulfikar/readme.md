@@ -9,7 +9,7 @@ Ceci est une application développée dans le but d'assister les médecins dans 
 - Raharison amboara Tiana Avotra
 - Rahajason Aroniaina Saotra
 - Ravelomahefa Serge
-- Andriamboavonjy Tafitasoa Tojohery
+- Andriamboavonjy Tafitasoa Tojohery Sambatra
 - Zahirhoussen Zoulfikar
 
 ## Installation et Configuration
