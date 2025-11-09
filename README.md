@@ -9,10 +9,10 @@
 
 ## Membres
 
-- Raharison amboara Tiana Avotra
-- Rahajason Aroniaina Saotra
-- Ravelomahefa Serge
-- Andriamboavonjy Tafitasoa Tojohery
-- Zahirhoussen Zoulfikar
+- 23, Raharison amboara Tiana Avotra
+- 22, Rahajason Aroniaina Saotra
+- 50, Ravelomahefa Serge
+- 2,  Andriamboavonjy Tafitasoa Tojohery Sambatra
+- 57, Zahirhoussen Zoulfikar
 
 Les dossiers `projets-d-innovation-24-25-avotra-saotra-serge-tafita-zoulfikar` et `tpi-python` possèdent chacun un README, visualisez en cliquant sur le dossier directement depuis github.
