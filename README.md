@@ -2,7 +2,7 @@
 
 # README - DeepBridge Groupe 2 - Novembre 2025
 
-# Liens
+## Liens
 - [Rapport](https://docs.google.com/document/d/1Xs_dGas12jF7GtyWs8RyPt_OGDhNrTJx/edit?fbclid=IwY2xjawN1jKhleHRuA2FlbQIxMABicmlkETFCUHoyYkRydGJ6R0o0TnhLAR7-o_NMCvZDtc52vMnfRvOxVId9s-MGZQxpOAxJdwHWmS2Y7It6P_SEyQBO7Q_aem_bZdW6Wuy6aFZAU3fD7NQNA)
 
 - [Video](https://youtu.be/ESbfXwI6HxI)
