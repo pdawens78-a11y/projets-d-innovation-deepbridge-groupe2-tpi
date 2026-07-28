@@ -1,0 +1,27 @@
+# Environnement virtuel
+venv/
+.venv/
+
+# Données médicales — NE JAMAIS VERSIONNER
+data/
+output/
+quarantine/
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Rapports générés
+*.csv
+*.log

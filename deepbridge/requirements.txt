@@ -1,0 +1,32 @@
+# ============================================================
+# DeepBridge — Dépendances complètes
+# Python 3.11+
+# pip install -r requirements.txt
+# ============================================================
+
+# --- Couche 1 : Ingestion ---
+pydicom==2.4.4              # Lecture fichiers DICOM
+
+# --- Couche 2 : Prétraitement ---
+numpy==1.26.4               # Calcul matriciel
+scipy==1.13.0               # Interpolation, rééchantillonnage
+SimpleITK==2.3.1            # Resampling 3D, espacement voxel
+opencv-python==4.9.0.80     # Normalisation image, CLAHE
+torchio==0.19.6             # Augmentation 3D médicale (×50)
+
+# --- Couche 3 : Annotation & Dataset ---
+pandas==2.2.2               # Manipulation CSV cliniques
+nibabel==5.2.1              # Lecture/écriture NIfTI (.nii.gz) pour nnU-Net
+
+# --- Couche 4 : Entraînement ---
+torch==2.3.0                # PyTorch (backend nnU-Net)
+onnx==1.16.0                # Export modèle ONNX
+onnxruntime==1.18.0         # Inférence ONNX (test local avant C#)
+
+# --- Visualisation ---
+matplotlib==3.8.4           # Affichage coupes, courbes métriques
+tqdm==4.66.4                # Barres de progression
+
+# --- Qualité de code ---
+pytest==8.2.0               # Tests unitaires
+pytest-cov==5.0.0           # Couverture de tests
