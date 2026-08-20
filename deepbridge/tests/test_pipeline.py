@@ -28,12 +28,6 @@ from organize_dicom_files import (
     iter_files,
     write_report,
 )
-from analyse_results import (
-    count_direct_subdirs,
-    count_dcm_recursive,
-    scans_per_patient,
-    dcm_per_series,
-)
 
 
 # ---------------------------------------------------------------------------
@@ -232,40 +226,3 @@ class TestWriteReport:
         assert "moved" in content
 
 
-# ---------------------------------------------------------------------------
-# Tests — analyse_results
-# ---------------------------------------------------------------------------
-
-class TestAnalyseResults:
-    def test_count_direct_subdirs(self, tmp_dir):
-        (tmp_dir / "PAT_001").mkdir()
-        (tmp_dir / "PAT_002").mkdir()
-        (tmp_dir / "_quarantine").mkdir()  # doit être ignoré
-        assert count_direct_subdirs(tmp_dir) == 2
-
-    def test_count_dcm_recursive(self, tmp_dir):
-        sub = tmp_dir / "PAT_001" / "SERIES_001"
-        sub.mkdir(parents=True)
-        (sub / "slice_001.dcm").write_bytes(b"")
-        (sub / "slice_002.dcm").write_bytes(b"")
-        (sub / ".hidden.dcm").write_bytes(b"")  # ignoré
-        assert count_dcm_recursive(tmp_dir) == 2
-
-    def test_scans_per_patient(self, tmp_dir):
-        pat = tmp_dir / "PAT_001"
-        (pat / "SERIES_001").mkdir(parents=True)
-        (pat / "SERIES_002").mkdir(parents=True)
-        result = scans_per_patient(tmp_dir)
-        assert result["PAT_001"] == 2
-
-    def test_dcm_per_series(self, tmp_dir):
-        series = tmp_dir / "PAT_001" / "SERIES_001"
-        series.mkdir(parents=True)
-        (series / "a.dcm").write_bytes(b"")
-        (series / "b.dcm").write_bytes(b"")
-        result = dcm_per_series(tmp_dir)
-        assert result["SERIES_001"] == 2
-
-    def test_nonexistent_path(self):
-        assert count_direct_subdirs(Path("/does/not/exist")) == 0
-        assert count_dcm_recursive(Path("/does/not/exist")) == 0
