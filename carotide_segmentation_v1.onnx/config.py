@@ -7,7 +7,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent
 
 # Dossiers principaux
-DATA_DIR       = PROJECT_ROOT / "data"
+DATA_DIR       = Path(r"C:\Users\Solutions\Desktop\dcm\dataset_chu_nice_2020_2021\scan")
 OUTPUT_DIR     = PROJECT_ROOT / "output"
 LOGS_DIR       = PROJECT_ROOT / "logs"
 QUARANTINE_DIR = PROJECT_ROOT / "quarantine"
