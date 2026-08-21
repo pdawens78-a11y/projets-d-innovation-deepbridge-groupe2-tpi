@@ -377,9 +377,8 @@ def main(source_folder: Path, output_folder: Path,
                 logger.info("Progression : %d/%d (%.1f%%)",
                             i, metrics.total_scanned, 100 * i / metrics.total_scanned)
 
-    if not dry_run:
-        report_path = write_report(records, output_folder)
-        logger.info("Rapport CSV : %s", report_path)
+    report_path = write_report(records, output_folder)
+    logger.info("Rapport CSV : %s", report_path)
 
     logger.info("─── Résumé ───────────────────────────────────────────")
     for key, value in metrics.summary().items():
