@@ -54,6 +54,14 @@ DATASET_SPLIT   = (0.70, 0.15, 0.15)   # train / val / test
 ONNX_OPSET      = 17
 MODEL_OUTPUT    = PROJECT_ROOT / "output" / "modele.onnx"
 
+# --- Segmentation TotalSegmentator ---
+# Valeurs provisoires issues du travail de Times — à confirmer avec lui avant
+# de les considérer comme définitives.
+TOTALSEG_TASK                  = "headneck_bones_vessels"
+NASCET_SEUIL_SYMPTOMATIQUE     = 50
+NASCET_SEUIL_ASYMPTOMATIQUE    = 70
+CALCIUM_SEUIL_HU               = 600
+
 # ── Logging ───────────────────────────────────────────────────
 LOG_LEVEL        = "INFO"
 LOG_MAX_BYTES    = 10_485_760   # 10 Mo
