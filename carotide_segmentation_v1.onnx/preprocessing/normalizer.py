@@ -15,9 +15,7 @@ encore d'un patient à l'autre selon :
   - Le protocole d'injection de produit de contraste
   - L'indice de masse corporelle du patient
 
-Sans normalisation, le modèle nnU-Net reçoit des données dont la
-distribution statistique est hétérogène, ce qui ralentit la convergence
-et dégrade les performances de segmentation.
+
 
 Deux normalisations complémentaires
 -------------------------------------
