@@ -1,3 +1,4 @@
+# Non utilisé en production depuis le passage à TotalSegmentator — conservé pour référence et couvert par les tests unitaires.
 """
 normalizer.py
 =============
