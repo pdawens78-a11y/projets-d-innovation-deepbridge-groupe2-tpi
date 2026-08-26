@@ -444,8 +444,11 @@ def process_series(
 
         nifti_path = patient_out / f"{patient_id}_{series_uid[:20]}_0000.nii.gz"
 
-        if NIBABEL_AVAILABLE:
-            save_nifti(volume_windowed, spacing, nifti_path)
+        # save_nifti() lève RuntimeError si nibabel est absent, ou toute
+        # autre exception si l'écriture échoue (disque plein, permissions,
+        # etc.). Dans les deux cas, l'exception remonte au except ci-dessous
+        # et la série est marquée "error" — jamais "ok" sans fichier écrit.
+        save_nifti(volume_windowed, spacing, nifti_path)
 
         result = {
             "status":     "ok",
@@ -457,7 +460,7 @@ def process_series(
             "hu_min":     float(volume_hu.min()),
             "hu_max":     float(volume_hu.max()),
             "hu_mean":    float(volume_hu.mean()),
-            "nifti_path": str(nifti_path) if NIBABEL_AVAILABLE else "N/A",
+            "nifti_path": str(nifti_path),
         }
 
         logger.debug(
@@ -538,9 +541,13 @@ def run(
     logger.info("Fenêtrage   : [%d HU, %d HU]", int(hu_min), int(hu_max))
 
     if not NIBABEL_AVAILABLE:
-        logger.warning(
-            "nibabel non installé — les volumes NIfTI ne seront pas sauvegardés. "
-            "Lancez : pip install nibabel"
+        logger.error(
+            "nibabel non installé — impossible d'écrire les volumes NIfTI. "
+            "Lancez : pip install nibabel (ou activez le venv du projet)."
+        )
+        raise RuntimeError(
+            "nibabel non installé — arrêt immédiat pour ne pas produire un "
+            "rapport de conversion faussement marqué 'ok' sans fichiers NIfTI écrits."
         )
 
     series_dirs = collect_series(sorted_dir)
