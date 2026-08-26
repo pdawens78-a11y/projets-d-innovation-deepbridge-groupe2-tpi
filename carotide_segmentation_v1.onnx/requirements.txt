@@ -6,6 +6,7 @@
 
 # --- Couche 1 : Ingestion ---
 pydicom==2.4.4              # Lecture fichiers DICOM
+openpyxl==3.1.5              # Lecture Excel clinique (dicom_csv_matcher)
 
 # --- Couche 2 : Prétraitement ---
 numpy==1.26.4               # Calcul matriciel
