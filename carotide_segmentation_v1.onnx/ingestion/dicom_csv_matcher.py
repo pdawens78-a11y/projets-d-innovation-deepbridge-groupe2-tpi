@@ -9,8 +9,18 @@ du fichier BaseCarotideAnonymisée.xlsx fourni par le CHU.
 Clé de jointure
 ---------------
 La colonne CODES du fichier Excel contient les noms des dossiers DICOM
-(ex: SF103E8_10.241.3.232_20210118173900817_CT). La correspondance est
-effectuée de façon insensible à la casse (majuscules = minuscules).
+*source* (ex: SF103E8_10.241.3.232_20210118173900817_CT), tels qu'ils
+existaient avant réorganisation par organize_dicom_files.py. Les dossiers
+dans sorted_dir sont eux nommés par patient_id (ex: 0350523511) et non
+plus par ce nom de dossier source — une jointure directe CODES ↔ nom de
+dossier échoue donc systématiquement (0 correspondance constaté).
+
+La jointure passe désormais par une étape de traduction intermédiaire :
+chaque code de l'Excel est d'abord traduit en patient_id via la table
+output/correspondance_source_patientid.csv (colonnes dossier_source,
+patient_id — produite à partir de pipeline_report.csv), puis c'est ce
+patient_id qui est comparé aux noms de dossiers réels de sorted_dir. La
+correspondance reste insensible à la casse (majuscules = minuscules).
 
 Gestion contraignante des cas non appariés
 ------------------------------------------
@@ -69,6 +79,9 @@ DEFAULT_SORTED_DIR = Path(r"C:\deepbridge\output")
 
 # Nom de la colonne de jointure dans le Excel clinique
 CLINICAL_KEY_COLUMN = "CODES"
+
+# Nom du fichier de correspondance dossier_source -> patient_id (dans sorted_dir par défaut)
+CORRESPONDANCE_FILENAME = "correspondance_source_patientid.csv"
 
 # Noms des fichiers de sortie
 MATCHED_FILENAME            = "matched.csv"
@@ -205,24 +218,89 @@ def index_dicom_series(sorted_dir: Path, logger: logging.Logger) -> pd.DataFrame
 
 
 # ---------------------------------------------------------------------------
+# Chargement de la table de correspondance dossier_source -> patient_id
+# ---------------------------------------------------------------------------
+
+def load_correspondance_map(
+    correspondance_csv: Path,
+    logger: logging.Logger,
+) -> dict:
+    """
+    Charge output/correspondance_source_patientid.csv et construit le
+    dictionnaire de traduction {dossier_source normalisé -> patient_id}.
+
+    Ce fichier est produit à partir de pipeline_report.csv (colonnes
+    source_path / patient_id, lignes status == "copied") et fait le pont
+    entre le nom de dossier DICOM source (format attendu par la colonne
+    CODES de l'Excel clinique) et le patient_id réellement utilisé comme
+    nom de dossier dans sorted_dir.
+
+    Parameters
+    ----------
+    correspondance_csv : chemin vers correspondance_source_patientid.csv
+
+    Returns
+    -------
+    dict : dossier_source normalisé -> patient_id (str)
+    """
+    if not correspondance_csv.exists():
+        raise FileNotFoundError(
+            f"Table de correspondance introuvable : {correspondance_csv}\n"
+            f"Générez-la depuis output/pipeline_report.csv avant de relancer "
+            f"le matcher."
+        )
+
+    df = pd.read_csv(correspondance_csv, dtype=str)
+
+    required_cols = {"dossier_source", "patient_id"}
+    if not required_cols.issubset(df.columns):
+        raise ValueError(
+            f"Colonnes {sorted(required_cols)} attendues dans "
+            f"{correspondance_csv}.\nColonnes disponibles : {list(df.columns)}"
+        )
+
+    mapping = {
+        normalize_key(row.dossier_source): normalize_key(row.patient_id)
+        for row in df.itertuples()
+    }
+
+    logger.info(
+        "%d correspondances dossier_source -> patient_id chargees depuis %s",
+        len(mapping), correspondance_csv.name,
+    )
+    return mapping
+
+
+# ---------------------------------------------------------------------------
 # Chargement du fichier clinique Excel
 # ---------------------------------------------------------------------------
 
-def load_clinical_data(xlsx_path: Path, logger: logging.Logger) -> pd.DataFrame:
+def load_clinical_data(
+    xlsx_path: Path,
+    correspondance_map: dict,
+    logger: logging.Logger,
+) -> pd.DataFrame:
     """
     Charge le fichier BaseCarotideAnonymisée.xlsx et prépare la clé
     de jointure normalisée.
 
     La feuille active (première feuille) est utilisée. Les lignes dont
-    la colonne CODES est vide sont exclues.
+    la colonne CODES est vide sont exclues. Chaque code est ensuite
+    traduit en patient_id via correspondance_map — c'est ce patient_id,
+    et non plus le code brut, qui sert de clé de jointure contre les
+    dossiers de sorted_dir.
 
     Parameters
     ----------
     xlsx_path : chemin vers le fichier Excel du CHU
+    correspondance_map : dict dossier_source normalisé -> patient_id,
+                          issu de load_correspondance_map()
 
     Returns
     -------
-    DataFrame avec une colonne supplémentaire 'clinical_key' normalisée.
+    DataFrame avec une colonne supplémentaire 'clinical_key' contenant
+    le patient_id traduit (normalisé, en minuscules) ou None si le code
+    n'a pas de correspondance dans la table.
     """
     if not xlsx_path.exists():
         raise FileNotFoundError(
@@ -254,8 +332,16 @@ def load_clinical_data(xlsx_path: Path, logger: logging.Logger) -> pd.DataFrame:
             "%d ligne(s) ignorée(s) — colonne CODES vide", before - after
         )
 
-    # Ajouter la clé normalisée
-    df["clinical_key"] = df[CLINICAL_KEY_COLUMN].apply(normalize_key)
+    # Traduire le code source (normalisé, casse + suffixe _SR) en patient_id
+    normalized_code = df[CLINICAL_KEY_COLUMN].apply(normalize_key)
+    df["clinical_key"] = normalized_code.map(correspondance_map)
+
+    nb_untranslated = df["clinical_key"].isna().sum()
+    if nb_untranslated > 0:
+        logger.warning(
+            "%d code(s) CODES sans correspondance dans %s (resteront non apparies)",
+            nb_untranslated, CORRESPONDANCE_FILENAME,
+        )
 
     logger.info("%d entrées cliniques chargées", len(df))
     return df
@@ -429,6 +515,7 @@ def run(
     sorted_dir:   Path,
     clinical_xlsx: Path,
     output_dir:   Optional[Path] = None,
+    correspondance_csv: Optional[Path] = None,
 ) -> dict:
     """
     Orchestre l'appariement complet DICOM ↔ données cliniques.
@@ -438,19 +525,23 @@ def run(
     sorted_dir    : arborescence validée produite par validate_dataset.py
     clinical_xlsx : fichier BaseCarotideAnonymisée.xlsx du CHU
     output_dir    : dossier de sortie (défaut : sorted_dir)
+    correspondance_csv : table dossier_source -> patient_id (défaut :
+                          sorted_dir / correspondance_source_patientid.csv)
 
     Returns
     -------
     dict : chemins des fichiers produits
     """
     out = output_dir or sorted_dir
+    correspondance_path = correspondance_csv or (sorted_dir / CORRESPONDANCE_FILENAME)
     logger = setup_logging(out)
     t0     = time.time()
 
     logger.info("Démarrage de l'appariement DICOM ↔ clinique")
-    logger.info("DICOM      : %s", sorted_dir)
-    logger.info("Clinique   : %s", clinical_xlsx)
-    logger.info("Sortie     : %s", out)
+    logger.info("DICOM           : %s", sorted_dir)
+    logger.info("Clinique        : %s", clinical_xlsx)
+    logger.info("Correspondance  : %s", correspondance_path)
+    logger.info("Sortie          : %s", out)
 
     # Étape 1 — Indexer les dossiers DICOM
     dicom_df = index_dicom_series(sorted_dir, logger)
@@ -462,8 +553,9 @@ def run(
         )
         sys.exit(1)
 
-    # Étape 2 — Charger les données cliniques
-    clinical_df = load_clinical_data(clinical_xlsx, logger)
+    # Étape 2 — Charger la table de correspondance puis les données cliniques
+    correspondance_map = load_correspondance_map(correspondance_path, logger)
+    clinical_df = load_clinical_data(clinical_xlsx, correspondance_map, logger)
 
     # Étape 3 — Apparier
     matched, unmatched_dicom, unmatched_clinical = match(
@@ -488,7 +580,8 @@ def parse_args() -> argparse.Namespace:
         description="Appariement DICOM ↔ données cliniques — DeepBridge / CHU Nice.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Clé de jointure : colonne CODES du fichier Excel ↔ nom du dossier DICOM
+Clé de jointure : colonne CODES du fichier Excel -> patient_id (via la table
+de correspondance) ↔ nom du dossier DICOM dans sorted_dir.
 Insensible à la casse. Suffixes _SR ignorés automatiquement.
 
 Sorties produites :
@@ -517,17 +610,28 @@ Exemples :
         "--output-dir", type=Path, default=None,
         help="Dossier de sortie pour les CSV (défaut : sorted_dir)",
     )
+    parser.add_argument(
+        "--correspondance", type=Path, default=None,
+        help=(
+            "Table dossier_source -> patient_id "
+            f"(défaut : sorted_dir/{CORRESPONDANCE_FILENAME})"
+        ),
+    )
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
 
+    correspondance_path = args.correspondance or (args.sorted_dir / CORRESPONDANCE_FILENAME)
+
     errors = []
     if not args.sorted_dir.exists():
         errors.append(f"Dossier DICOM introuvable : {args.sorted_dir}")
     if not args.clinical_xlsx.exists():
         errors.append(f"Fichier Excel introuvable : {args.clinical_xlsx}")
+    if not correspondance_path.exists():
+        errors.append(f"Table de correspondance introuvable : {correspondance_path}")
 
     if errors:
         for e in errors:
@@ -538,4 +642,5 @@ if __name__ == "__main__":
         sorted_dir=args.sorted_dir,
         clinical_xlsx=args.clinical_xlsx,
         output_dir=args.output_dir,
+        correspondance_csv=args.correspondance,
     )
