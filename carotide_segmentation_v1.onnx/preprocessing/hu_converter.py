@@ -54,6 +54,7 @@ import json
 import logging
 import logging.handlers
 import argparse
+import hashlib
 import sys
 import time
 from datetime import datetime
@@ -356,6 +357,20 @@ def convert_series(slices: list) -> tuple:
 # Sauvegarde NIfTI
 # ---------------------------------------------------------------------------
 
+def series_uid_suffix(series_uid: str, length: int = 10) -> str:
+    """
+    Hash MD5 court d'un SeriesInstanceUID — même principe que
+    md5_suffix() dans ingestion/organize_dicom_files.py, utilisé ici
+    pour garantir un nom de fichier NIfTI unique par série.
+
+    Nécessaire car un simple series_uid[:20] tronqué peut être identique
+    pour plusieurs séries d'un même patient dont les UID partagent un
+    préfixe commun (même étude/scanner) — ce qui provoquait des
+    collisions de noms de fichiers et des écrasements silencieux.
+    """
+    return hashlib.md5(series_uid.encode()).hexdigest()[:length]
+
+
 def save_nifti(
     volume:      np.ndarray,
     spacing:     tuple,
@@ -381,6 +396,15 @@ def save_nifti(
     if not NIBABEL_AVAILABLE:
         raise RuntimeError(
             "nibabel non installé. Lancez : pip install nibabel"
+        )
+
+    # Filet de sécurité : même avec un nom de fichier garanti unique par
+    # série (series_uid_suffix), un fichier préexistant au même chemin
+    # ne doit jamais être écrasé silencieusement — mieux vaut échouer
+    # bruyamment (série marquée "error") que perdre un volume déjà écrit.
+    if output_path.exists():
+        raise FileExistsError(
+            f"Le fichier NIfTI existe déjà, écrasement refusé : {output_path}"
         )
 
     dz, dy, dx = spacing
@@ -442,7 +466,7 @@ def process_series(
         patient_out = output_dir / patient_id
         patient_out.mkdir(parents=True, exist_ok=True)
 
-        nifti_path = patient_out / f"{patient_id}_{series_uid[:20]}_0000.nii.gz"
+        nifti_path = patient_out / f"{patient_id}_{series_uid_suffix(series_uid)}_0000.nii.gz"
 
         # save_nifti() lève RuntimeError si nibabel est absent, ou toute
         # autre exception si l'écriture échoue (disque plein, permissions,
